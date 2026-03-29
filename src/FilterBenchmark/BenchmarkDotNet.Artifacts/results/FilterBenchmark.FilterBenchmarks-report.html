@@ -2,7 +2,7 @@
 <html lang='en'>
 <head>
 <meta charset='utf-8' />
-<title>FilterBenchmark.FilterBenchmarks-20260321-180845</title>
+<title>FilterBenchmark.FilterBenchmarks-20260328-220304</title>
 
 <style type="text/css">
 	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
@@ -13,11 +13,11 @@
 </head>
 <body>
 <pre><code>
-BenchmarkDotNet v0.14.0, macOS 26.3.1 (a) (25D771280a) [Darwin 25.3.0]
+BenchmarkDotNet v0.14.0, macOS 26.4 (25E246) [Darwin 25.4.0]
 Apple M4 Max, 1 CPU, 14 logical and 14 physical cores
 .NET SDK 10.0.101
   [Host]     : .NET 10.0.1 (10.0.125.57005), Arm64 RyuJIT AdvSIMD
-  Job-DTRNBC : .NET 10.0.1 (10.0.125.57005), Arm64 RyuJIT AdvSIMD
+  Job-GZWWHV : .NET 10.0.1 (10.0.125.57005), Arm64 RyuJIT AdvSIMD
 </code></pre>
 <pre><code>Server=True  
 </code></pre>
@@ -25,18 +25,18 @@ Apple M4 Max, 1 CPU, 14 logical and 14 physical cores
 <table>
 <thead><tr><th>Method                    </th><th>Mean</th><th>Ratio</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
 </tr>
-</thead><tbody><tr><td>&#39;Bloom insert&#39;</td><td>12.514 ns</td><td>1.00</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
-</tr><tr><td>&#39;Bucketed (2,4) insert&#39;</td><td>26.945 ns</td><td>2.15</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
-</tr><tr><td>&#39;Windowed (2,2) insert&#39;</td><td>28.497 ns</td><td>2.28</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
-</tr><tr><td>&#39;Morton insert&#39;</td><td>4.938 ns</td><td>0.39</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
-</tr><tr><td>&#39;Bloom positive lookup&#39;</td><td>10.415 ns</td><td>0.83</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Bucketed (2,4) positive lookup&#39;</td><td>11.351 ns</td><td>0.91</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Windowed (2,2) positive lookup&#39;</td><td>15.879 ns</td><td>1.27</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Morton positive lookup&#39;</td><td>21.182 ns</td><td>1.69</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Bloom negative lookup&#39;</td><td>17.811 ns</td><td>1.42</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Bucketed (2,4) negative lookup&#39;</td><td>4.015 ns</td><td>0.32</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Windowed (2,2) negative lookup&#39;</td><td>13.183 ns</td><td>1.05</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
-</tr><tr><td>&#39;Morton negative lookup&#39;</td><td>45.555 ns</td><td>3.64</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</thead><tbody><tr><td>&#39;Bloom insert&#39;</td><td>12.773 ns</td><td>1.00</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
+</tr><tr><td>&#39;Bucketed (2,4) insert&#39;</td><td>27.684 ns</td><td>2.17</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
+</tr><tr><td>&#39;Windowed (2,2) insert&#39;</td><td>29.405 ns</td><td>2.30</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
+</tr><tr><td>&#39;Morton insert&#39;</td><td>5.239 ns</td><td>0.41</td><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>2 B</td><td>1.00</td>
+</tr><tr><td>&#39;Bloom positive lookup&#39;</td><td>10.614 ns</td><td>0.83</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Bucketed (2,4) positive lookup&#39;</td><td>12.092 ns</td><td>0.95</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Windowed (2,2) positive lookup&#39;</td><td>16.236 ns</td><td>1.27</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Morton positive lookup&#39;</td><td>21.535 ns</td><td>1.69</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Bloom negative lookup&#39;</td><td>18.363 ns</td><td>1.44</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Bucketed (2,4) negative lookup&#39;</td><td>4.128 ns</td><td>0.32</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Windowed (2,2) negative lookup&#39;</td><td>13.141 ns</td><td>1.03</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
+</tr><tr><td>&#39;Morton negative lookup&#39;</td><td>46.123 ns</td><td>3.61</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td>
 </tr></tbody></table>
 </body>
 </html>

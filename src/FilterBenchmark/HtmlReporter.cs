@@ -40,6 +40,7 @@ public static class HtmlReporter
 <meta name=""viewport"" content=""width=device-width, initial-scale=1"">
 <title>Cuckoo Filter Benchmark Report</title>
 <script src=""https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js""></script>
+<script src=""https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js""></script>
 <style>
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -202,109 +203,135 @@ const posNs  = {jsPos};
 const negNs  = {jsNeg};
 const colors = {jsColors};
 
+Chart.register(ChartDataLabels);
+
 const gridOpts = {{
   responsive: true, maintainAspectRatio: false,
-  plugins: {{ legend: {{ display: false }} }},
+  plugins: {{ legend: {{ display: false }}, datalabels: {{ display: false }} }},
   scales: {{
     x: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size: 12 }} }} }},
     y: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size: 12 }} }} }}
   }}
 }};
 
-function barChart(id, labels, data, color, yLabel, minVal) {{
+function barChart(id, labels, data, color, yLabel, minVal, fmtFn) {{
   const opts = JSON.parse(JSON.stringify(gridOpts));
   opts.scales.y.title = {{ display: true, text: yLabel, font: {{ size: 12 }} }};
   if (minVal !== undefined) opts.scales.y.min = minVal;
+  const maxVal = Math.max(...data);
+  const base   = minVal !== undefined ? minVal : 0;
+  opts.scales.y.max = base + (maxVal - base) * 1.22;
+  opts.plugins.datalabels = {{
+    display: true, anchor: 'end', align: 'end', offset: 4,
+    font: {{ size: 11, weight: '500' }}, color: '#444441',
+    formatter: fmtFn || (v => v.toFixed(2))
+  }};
   new Chart(document.getElementById(id), {{
     type: 'bar',
-    data: {{
-      labels,
-      datasets: [{{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.55 }}]
-    }},
+    data: {{ labels, datasets: [{{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.55 }}] }},
     options: opts
   }});
 }}
 
 // Chart 1: bits per item
-barChart('c1', names, bpi, colors, 'bits / item', 0);
+barChart('c1', names, bpi, colors, 'bits / item', 0, v => v.toFixed(2));
 
 // Chart 2: overhead C
-barChart('c2', names, cVals, colors, 'C', 1.0);
+barChart('c2', names, cVals, colors, 'C', 1.0, v => v.toFixed(3));
 
-// Chart 3: FPR measured vs target (grouped)
+// Chart 3: FPR measured vs target — labels coloured to match their bar
 new Chart(document.getElementById('c3'), {{
   type: 'bar',
   data: {{
     labels: names,
     datasets: [
-      {{ label: 'Measured', data: fprM, backgroundColor: '#3266ad', borderRadius: 4, barPercentage: 0.4 }},
-      {{ label: 'Target',   data: fprT, backgroundColor: '#E24B4a', borderRadius: 4, barPercentage: 0.4 }}
+      {{ label: 'Measured', data: fprM, backgroundColor: '#3266ad', borderRadius: 4,
+         barPercentage: 0.4,
+         datalabels: {{ display:true, anchor:'end', align:'end', offset:3,
+                        font:{{size:10,weight:'500'}}, color:'#0C447C',
+                        formatter: v => v.toFixed(4)+'%' }} }},
+      {{ label: 'Target', data: fprT, backgroundColor: '#E24B4a', borderRadius: 4,
+         barPercentage: 0.4,
+         datalabels: {{ display:true, anchor:'end', align:'end', offset:3,
+                        font:{{size:10,weight:'500'}}, color:'#791F1F',
+                        formatter: v => v.toFixed(4)+'%' }} }}
     ]
   }},
   options: {{
     ...gridOpts,
-    plugins: {{ legend: {{ display: false }} }},
+    plugins: {{ legend:{{display:false}}, datalabels:{{display:true}} }},
     scales: {{
-      x: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size:12 }} }} }},
-      y: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{
-        font: {{ size:12 }}, callback: v => v.toFixed(4) + '%'
-      }} }}
+      x: {{ grid:{{color:'#e8e8e422'}}, ticks:{{font:{{size:12}}}} }},
+      y: {{ grid:{{color:'#e8e8e422'}},
+            ticks:{{font:{{size:12}}, callback: v => v.toFixed(4)+'%'}},
+            max: Math.max(...fprM, ...fprT) * 1.35 }}
     }}
   }}
 }});
 
 // Chart 4: insert ns/op
-barChart('c4', names, insNs, colors, 'ns / op', 0);
+barChart('c4', names, insNs, colors, 'ns / op', 0, v => v.toFixed(1));
 
-// Chart 5: negative lookup only — highlights Morton's occupancy bitmap advantage
-barChart('c5', names, negNs, colors, 'ns / op', 0);
+// Chart 5: negative lookup — Morton's bitmap advantage
+barChart('c5', names, negNs, colors, 'ns / op', 0, v => v.toFixed(1));
 
-// Chart 6: positive vs negative lookup side-by-side (grouped)
+// Chart 6: positive vs negative lookup — labels coloured to match dataset
 new Chart(document.getElementById('c6'), {{
   type: 'bar',
   data: {{
     labels: names,
     datasets: [
-      {{ label: 'Positive', data: posNs, backgroundColor: '#3266ad', borderRadius: 4, barPercentage: 0.4 }},
-      {{ label: 'Negative', data: negNs, backgroundColor: '#1D9E75', borderRadius: 4, barPercentage: 0.4 }}
+      {{ label: 'Positive', data: posNs, backgroundColor: '#3266ad', borderRadius: 4,
+         barPercentage: 0.4,
+         datalabels: {{ display:true, anchor:'end', align:'end', offset:3,
+                        font:{{size:10,weight:'500'}}, color:'#0C447C',
+                        formatter: v => v.toFixed(1) }} }},
+      {{ label: 'Negative', data: negNs, backgroundColor: '#1D9E75', borderRadius: 4,
+         barPercentage: 0.4,
+         datalabels: {{ display:true, anchor:'end', align:'end', offset:3,
+                        font:{{size:10,weight:'500'}}, color:'#085041',
+                        formatter: v => v.toFixed(1) }} }}
     ]
   }},
   options: {{
     ...gridOpts,
-    plugins: {{ legend: {{ display: false }} }},
+    plugins: {{ legend:{{display:false}}, datalabels:{{display:true}} }},
     scales: {{
-      x: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size:12 }} }} }},
-      y: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size:12 }} }},
-           title: {{ display: true, text: 'ns / op', font: {{ size:12 }} }} }}
+      x: {{ grid:{{color:'#e8e8e422'}}, ticks:{{font:{{size:12}}}} }},
+      y: {{ grid:{{color:'#e8e8e422'}},
+            ticks:{{font:{{size:12}}}},
+            title:{{display:true, text:'ns / op', font:{{size:12}}}},
+            max: Math.max(...posNs, ...negNs) * 1.22 }}
     }}
   }}
 }});
 
-// Chart 7: theoretical overhead C across k values — now includes Morton
+// Chart 7: theoretical C line chart — no datalabels (too cluttered on lines)
 const ks = [4,5,6,7,8,9,10,12,14,16,18,20];
 new Chart(document.getElementById('c7'), {{
   type: 'line',
   data: {{
-    labels: ks.map(k => 'k=' + k),
+    labels: ks.map(k => 'k='+k),
     datasets: [
-      {{ label: 'Bloom',    data: ks.map(() => 1.443),
-         borderColor: '#3266ad', borderWidth: 2, pointRadius: 3, tension: 0 }},
-      {{ label: 'Bucketed', data: ks.map(k => 1.05*(1+3/k)),
-         borderColor: '#73726c', borderWidth: 2, pointRadius: 3, tension: 0.3 }},
-      {{ label: 'Windowed', data: ks.map(k => 1.06*(1+2/k)),
-         borderColor: '#1D9E75', borderWidth: 2.5, pointRadius: 3, tension: 0.3 }},
-      {{ label: 'Morton',   data: ks.map(k => (k+6)/(k*0.95)),
-         borderColor: '#BA7517', borderWidth: 2, pointRadius: 3, tension: 0.3,
-         borderDash: [5,3] }},
+      {{ label:'Bloom',    data:ks.map(()=>1.443),
+         borderColor:'#3266ad', borderWidth:2, pointRadius:3, tension:0 }},
+      {{ label:'Bucketed', data:ks.map(k=>1.05*(1+3/k)),
+         borderColor:'#73726c', borderWidth:2, pointRadius:3, tension:0.3 }},
+      {{ label:'Windowed', data:ks.map(k=>1.06*(1+2/k)),
+         borderColor:'#1D9E75', borderWidth:2.5, pointRadius:3, tension:0.3 }},
+      {{ label:'Morton',   data:ks.map(k=>(k+6)/(k*0.95)),
+         borderColor:'#BA7517', borderWidth:2, pointRadius:3, tension:0.3,
+         borderDash:[5,3] }}
     ]
   }},
   options: {{
-    responsive: true, maintainAspectRatio: false,
-    plugins: {{ legend: {{ display: false }} }},
-    scales: {{
-      x: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size:12 }} }} }},
-      y: {{ grid: {{ color: '#e8e8e422' }}, ticks: {{ font: {{ size:12 }}, callback: v => v.toFixed(2) }},
-           title: {{ display: true, text: 'C', font: {{ size:12 }} }} }}
+    responsive:true, maintainAspectRatio:false,
+    plugins:{{ legend:{{display:false}}, datalabels:{{display:false}} }},
+    scales:{{
+      x:{{ grid:{{color:'#e8e8e422'}}, ticks:{{font:{{size:12}}}} }},
+      y:{{ grid:{{color:'#e8e8e422'}},
+           ticks:{{font:{{size:12}}, callback: v=>v.toFixed(2)}},
+           title:{{display:true, text:'C', font:{{size:12}}}} }}
     }}
   }}
 }});
