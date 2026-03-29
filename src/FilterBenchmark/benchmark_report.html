@@ -40,7 +40,7 @@
   <h1>Cuckoo Filter Benchmark Report</h1>
   <p class="meta">n = 20 000 000 keys &nbsp;·&nbsp; k = 10 &nbsp;·&nbsp;
      Target FPR = 2<sup>-10</sup> = 0,0977% &nbsp;·&nbsp;
-     Generated 2026-03-28 22:03</p>
+     Generated 2026-03-28 23:30</p>
 
   <div class="insight">
     Four filters compared: Bloom (baseline), Bucketed cuckoo (Fan et al. 2014), Windowed cuckoo
@@ -103,7 +103,7 @@
 
     <!-- Chart 5: Negative lookup latency — Morton's key advantage -->
     <div class="card">
-      <h2>Negative lookup latency (ns/op) — Morton's advantage</h2>
+      <h2>Negative lookup latency (ns/op)</h2>
       <div class="legend">
         <span class="leg"><span class="sq" style="background:#3266ad"></span>Bloom</span>
         <span class="leg"><span class="sq" style="background:#73726c"></span>Bucketed (2,4)</span>
@@ -111,33 +111,102 @@
         <span class="leg"><span class="sq" style="background:#BA7517"></span>Morton</span>
       </div>
       <div class="chart-wrap" style="height:220px"><canvas id="c5"></canvas></div>
-      <p class="note">Morton's occupancy bitmap short-circuits empty blocks — a single uint32 check per block replaces scanning all slots.</p>
+      <p class="note" style="margin-top:0.6rem">
+        Lower is better. Morton leads because its <strong>32-bit occupancy bitmap</strong>
+        short-circuits the entire slot scan when a block is empty:<br>
+        <code style="font-size:11px;background:#f0f0ec;padding:2px 6px;border-radius:4px;display:inline-block;margin-top:4px">
+          if (occupancy[block] == 0) return false; &nbsp;// no fingerprint bytes loaded
+        </code><br>
+        Bloom exits early on the first zero bit for negatives (variable cost).
+        Both cuckoo variants always scan all slots in both candidate locations (fixed cost).
+      </p>
     </div>
 
-    <!-- Chart 6: Positive vs negative lookup side-by-side -->
+    <!-- Chart 6: Positive lookup throughput — dedicated chart -->
     <div class="card">
-      <h2>Positive vs. negative lookup (ns/op)</h2>
+      <h2>Positive lookup throughput (ns/op)</h2>
       <div class="legend">
-        <span class="leg"><span class="sq" style="background:#3266ad"></span>Positive (key present)</span>
-        <span class="leg"><span class="sq" style="background:#1D9E75"></span>Negative (key absent)</span>
+        <span class="leg"><span class="sq" style="background:#3266ad"></span>Bloom</span>
+        <span class="leg"><span class="sq" style="background:#73726c"></span>Bucketed (2,4)</span>
+        <span class="leg"><span class="sq" style="background:#1D9E75"></span>Windowed (2,2)</span>
+        <span class="leg"><span class="sq" style="background:#BA7517"></span>Morton</span>
       </div>
       <div class="chart-wrap" style="height:220px"><canvas id="c6"></canvas></div>
-      <p class="note">Cuckoo-family filters check exactly 2 locations regardless. Bloom exits early on first zero bit for negatives.</p>
+      <p class="note">
+        Lower is better. All three cuckoo-family filters check exactly 2 locations — similar latency.
+        Bloom must verify all k=10 bit positions on a positive result with no early exit,
+        making it the slowest here despite being the fastest to insert.
+      </p>
     </div>
 
     <!-- Chart 7: Overhead C across k values (theoretical) -->
     <div class="card">
-      <h2>Theoretical overhead C across FPR targets</h2>
+      <h2>Theoretical overhead C(k) across FPR targets</h2>
       <div class="legend">
-        <span class="leg"><span class="sq" style="background:#3266ad"></span>Bloom (1.443)</span>
-        <span class="leg"><span class="sq" style="background:#73726c"></span>Bucketed 1.05(1+3/k)</span>
-        <span class="leg"><span class="sq" style="background:#1D9E75"></span>Windowed 1.06(1+2/k)</span>
-        <span class="leg"><span class="sq" style="background:#BA7517"></span>Morton (k+6)/(k×0.95)</span>
+        <span class="leg"><span class="sq" style="background:#3266ad"></span>Bloom — C = 1.443 (flat)</span>
+        <span class="leg"><span class="sq" style="background:#73726c"></span>Bucketed — 1.05(1+3/k)</span>
+        <span class="leg"><span class="sq" style="background:#1D9E75"></span>Windowed — 1.06(1+2/k)</span>
+        <span class="leg"><span class="sq" style="background:#BA7517"></span>Morton — (k+6)/(k×0.95)</span>
       </div>
-      <div class="chart-wrap" style="height:220px"><canvas id="c7"></canvas></div>
-      <p class="note">Morton's C converges toward the cuckoo filters only at large k. Its advantage is speed, not space.</p>
+      <div class="chart-wrap" style="height:240px"><canvas id="c7"></canvas></div>
+      <table style="margin-top:0.75rem;font-size:12px;border-collapse:collapse;width:100%">
+        <thead>
+          <tr style="background:#f9f9f7">
+            <th style="padding:5px 8px;border:0.5px solid #e0e0da;text-align:left">Filter</th>
+            <th style="padding:5px 8px;border:0.5px solid #e0e0da">C formula</th>
+            <th style="padding:5px 8px;border:0.5px solid #e0e0da">C at k=10</th>
+            <th style="padding:5px 8px;border:0.5px solid #e0e0da">Asymptote (k→∞)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:5px 8px;border:0.5px solid #e8e8e4">Bloom</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.443</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.443</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.443 (never improves)</td></tr>
+          <tr><td style="padding:5px 8px;border:0.5px solid #e8e8e4">Bucketed (2,4)</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.05(1+3/k)</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.365</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">→ 1.05</td></tr>
+          <tr style="background:#eaf3de">
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;font-weight:500;color:#27500A">Windowed (2,2)</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center;font-weight:500;color:#27500A">1.06(1+2/k)</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center;font-weight:500;color:#27500A">1.272</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center;font-weight:500;color:#27500A">→ 1.06 ✓ lowest</td></tr>
+          <tr><td style="padding:5px 8px;border:0.5px solid #e8e8e4">Morton</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">(k+6)/(k×0.95)</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">1.684</td>
+              <td style="padding:5px 8px;border:0.5px solid #e8e8e4;text-align:center">→ 1.05</td></tr>
+        </tbody>
+      </table>
+      <p class="note" style="margin-top:0.5rem">
+        C = actual bits/item ÷ k. Lower is better; 1.0 is the information-theoretic minimum.
+        Cuckoo-family filters improve as k grows because the constant overhead bits (+2, +3, +6)
+        shrink as a fraction of the total fingerprint. Bloom's C is fixed at 1.443 regardless of k.
+        <strong>Crossover:</strong> bucketed cuckoo beats Bloom at k ≈ 7 (FPR ≈ 0.78%).
+        Morton's advantage is speed, not space — its C exceeds Bloom for k ≤ 8.
+      </p>
     </div>
 
+  </div>
+
+  <!-- Spider / Radar chart — full width, all 5 dimensions -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <h2>Multi-dimensional trade-off — spider chart</h2>
+    <p class="note" style="margin-bottom:0.75rem">
+      Each axis is normalized to [0, 1] where <strong>higher = better</strong>.
+      Space efficiency = 1 − (C − C<sub>min</sub>) / (C<sub>max</sub> − C<sub>min</sub>).
+      Throughput axes = 1 − (latency − min) / (max − min).
+      Deletion support is binary (0 = not supported, 1 = supported).
+    </p>
+    <div class="legend" style="margin-bottom:0.5rem">
+      <span class="leg"><span class="sq" style="background:#3266ad;opacity:0.8"></span>Bloom</span>
+      <span class="leg"><span class="sq" style="background:#73726c;opacity:0.8"></span>Bucketed (2,4)</span>
+      <span class="leg"><span class="sq" style="background:#1D9E75;opacity:0.8"></span>Windowed (2,2)</span>
+      <span class="leg"><span class="sq" style="background:#BA7517;opacity:0.8"></span>Morton</span>
+    </div>
+    <div class="chart-wrap" style="height:380px;max-width:520px;margin:0 auto">
+      <canvas id="c8"></canvas>
+    </div>
   </div>
 
   <!-- Theory table -->
@@ -165,10 +234,12 @@ const bpi    = [14.4270,21.8104,13.6364,15.7062];
 const cVals  = [1.4427,2.1810,1.3636,1.5706];
 const fprM   = [0.0987,0.0584,0.0869,0.0918];
 const fprT   = [0.0977,0.0977,0.0977,0.0977];
-const insNs  = [39.9330,33.8266,20.9570,11.1270];
-const posNs  = [32.3026,15.2686,28.9538,23.6840];
-const negNs  = [25.6258,17.7294,24.0422,80.0410];
+const insNs  = [38.8750,26.5570,22.8184,11.0114];
+const posNs  = [30.7694,14.8854,29.5562,23.4240];
+const negNs  = [25.1180,16.4738,25.7912,84.0254];
 const colors = ['#3266ad','#73726c','#1D9E75','#BA7517'];
+
+// ── Shared helpers ────────────────────────────────────────────────────────
 
 Chart.register(ChartDataLabels);
 
@@ -181,21 +252,28 @@ const gridOpts = {
   }
 };
 
+// barChart: labels placed INSIDE the top of each bar (align:'start', anchor:'end')
+// so they never overflow above the chart boundary regardless of value spread.
 function barChart(id, labels, data, color, yLabel, minVal, fmtFn) {
   const opts = JSON.parse(JSON.stringify(gridOpts));
   opts.scales.y.title = { display: true, text: yLabel, font: { size: 12 } };
   if (minVal !== undefined) opts.scales.y.min = minVal;
   const maxVal = Math.max(...data);
   const base   = minVal !== undefined ? minVal : 0;
-  opts.scales.y.max = base + (maxVal - base) * 1.22;
+  // Add only 8% headroom — label sits inside bar so no overflow needed
+  opts.scales.y.max = base + (maxVal - base) * 1.08;
   opts.plugins.datalabels = {
-    display: true, anchor: 'end', align: 'end', offset: 4,
-    font: { size: 11, weight: '500' }, color: '#444441',
+    display: true,
+    anchor: 'end',       // pin to top of bar
+    align: 'start',      // draw label downward from anchor = inside bar top
+    offset: 4,
+    font: { size: 11, weight: '500' },
+    color: '#fff',       // white text on coloured bar is always readable
     formatter: fmtFn || (v => v.toFixed(2))
   };
   new Chart(document.getElementById(id), {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.55 }] },
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.6 }] },
     options: opts
   });
 }
@@ -203,10 +281,28 @@ function barChart(id, labels, data, color, yLabel, minVal, fmtFn) {
 // Chart 1: bits per item
 barChart('c1', names, bpi, colors, 'bits / item', 0, v => v.toFixed(2));
 
-// Chart 2: overhead C
-barChart('c2', names, cVals, colors, 'C', 1.0, v => v.toFixed(3));
+// Chart 2: overhead C — y starts at 1.0 so bars are short; use outside label for readability
+(function() {
+  const opts = JSON.parse(JSON.stringify(gridOpts));
+  opts.scales.y.title = { display: true, text: 'C', font: { size: 12 } };
+  opts.scales.y.min = 1.0;
+  const maxC = Math.max(...cVals);
+  opts.scales.y.max = 1.0 + (maxC - 1.0) * 1.30; // extra room — bars are short above 1.0
+  opts.plugins.datalabels = {
+    display: true, anchor: 'end', align: 'end', offset: 4,
+    font: { size: 11, weight: '500' }, color: '#444441',
+    formatter: v => v.toFixed(3)
+  };
+  new Chart(document.getElementById('c2'), {
+    type: 'bar',
+    data: { labels: names, datasets: [{ data: cVals, backgroundColor: colors,
+             borderRadius: 4, barPercentage: 0.6 }] },
+    options: opts
+  });
+})();
 
-// Chart 3: FPR measured vs target — labels coloured to match their bar
+// Chart 3: FPR grouped — measured label OUTSIDE (above), target label INSIDE
+// so two labels for the same group never collide.
 new Chart(document.getElementById('c3'), {
   type: 'bar',
   data: {
@@ -219,8 +315,8 @@ new Chart(document.getElementById('c3'), {
                         formatter: v => v.toFixed(4)+'%' } },
       { label: 'Target', data: fprT, backgroundColor: '#E24B4a', borderRadius: 4,
          barPercentage: 0.4,
-         datalabels: { display:true, anchor:'end', align:'end', offset:3,
-                        font:{size:10,weight:'500'}, color:'#791F1F',
+         datalabels: { display:true, anchor:'center', align:'center', offset:0,
+                        font:{size:10,weight:'500'}, color:'#fff',
                         formatter: v => v.toFixed(4)+'%' } }
     ]
   },
@@ -236,72 +332,145 @@ new Chart(document.getElementById('c3'), {
   }
 });
 
-// Chart 4: insert ns/op
+// Charts 4, 5, 6: throughput — inside-bar white labels, no overflow
 barChart('c4', names, insNs, colors, 'ns / op', 0, v => v.toFixed(1));
-
-// Chart 5: negative lookup — Morton's bitmap advantage
 barChart('c5', names, negNs, colors, 'ns / op', 0, v => v.toFixed(1));
+barChart('c6', names, posNs, colors, 'ns / op', 0, v => v.toFixed(1));
 
-// Chart 6: positive vs negative lookup — labels coloured to match dataset
-new Chart(document.getElementById('c6'), {
-  type: 'bar',
-  data: {
-    labels: names,
-    datasets: [
-      { label: 'Positive', data: posNs, backgroundColor: '#3266ad', borderRadius: 4,
-         barPercentage: 0.4,
-         datalabels: { display:true, anchor:'end', align:'end', offset:3,
-                        font:{size:10,weight:'500'}, color:'#0C447C',
-                        formatter: v => v.toFixed(1) } },
-      { label: 'Negative', data: negNs, backgroundColor: '#1D9E75', borderRadius: 4,
-         barPercentage: 0.4,
-         datalabels: { display:true, anchor:'end', align:'end', offset:3,
-                        font:{size:10,weight:'500'}, color:'#085041',
-                        formatter: v => v.toFixed(1) } }
-    ]
-  },
-  options: {
-    ...gridOpts,
-    plugins: { legend:{display:false}, datalabels:{display:true} },
-    scales: {
-      x: { grid:{color:'#e8e8e422'}, ticks:{font:{size:12}} },
-      y: { grid:{color:'#e8e8e422'},
-            ticks:{font:{size:12}},
-            title:{display:true, text:'ns / op', font:{size:12}},
-            max: Math.max(...posNs, ...negNs) * 1.22 }
-    }
-  }
-});
-
-// Chart 7: theoretical C line chart — no datalabels (too cluttered on lines)
+// Chart 7: C(k) line chart — end-of-line labels staggered vertically
+// Bucketed and Windowed converge at large k; offset them so they don't touch.
 const ks = [4,5,6,7,8,9,10,12,14,16,18,20];
+const c7Data = {
+  bloom:    ks.map(() => 1.443),
+  bucketed: ks.map(k => 1.05*(1+3/k)),
+  windowed: ks.map(k => 1.06*(1+2/k)),
+  morton:   ks.map(k => (k+6)/(k*0.95))
+};
+// align: 'right' + offset staggers labels right of last point.
+// 'top'/'bottom' nudge vertically for lines that are close at k=20.
+function endLabel(color, text, vAlign) {
+  return {
+    display: ctx => ctx.dataIndex === ks.length - 1,
+    anchor: 'end', align: vAlign || 'right', offset: 8,
+    font: { size: 10, weight: '500' },
+    color: color,
+    formatter: () => text
+  };
+}
 new Chart(document.getElementById('c7'), {
   type: 'line',
   data: {
     labels: ks.map(k => 'k='+k),
     datasets: [
-      { label:'Bloom',    data:ks.map(()=>1.443),
-         borderColor:'#3266ad', borderWidth:2, pointRadius:3, tension:0 },
-      { label:'Bucketed', data:ks.map(k=>1.05*(1+3/k)),
-         borderColor:'#73726c', borderWidth:2, pointRadius:3, tension:0.3 },
-      { label:'Windowed', data:ks.map(k=>1.06*(1+2/k)),
-         borderColor:'#1D9E75', borderWidth:2.5, pointRadius:3, tension:0.3 },
-      { label:'Morton',   data:ks.map(k=>(k+6)/(k*0.95)),
-         borderColor:'#BA7517', borderWidth:2, pointRadius:3, tension:0.3,
-         borderDash:[5,3] }
+      { label:'Bloom', data:c7Data.bloom, borderColor:'#3266ad',
+         borderWidth:2, pointRadius:2, tension:0,
+         datalabels: endLabel('#3266ad', 'Bloom 1.443', 'top') },
+      { label:'Bucketed', data:c7Data.bucketed, borderColor:'#73726c',
+         borderWidth:2, pointRadius:2, tension:0.3,
+         datalabels: endLabel('#5F5E5A', '1.05(1+3/k)', 'top') },
+      { label:'Windowed', data:c7Data.windowed, borderColor:'#1D9E75',
+         borderWidth:2.5, pointRadius:2, tension:0.3,
+         datalabels: endLabel('#0F6E56', '1.06(1+2/k) ✓', 'bottom') },
+      { label:'Morton', data:c7Data.morton, borderColor:'#BA7517',
+         borderWidth:2, pointRadius:2, tension:0.3, borderDash:[5,3],
+         datalabels: endLabel('#854F0B', '(k+6)/(k·0.95)', 'right') }
     ]
   },
   options: {
     responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{display:false}, datalabels:{display:false} },
+    layout: { padding: { right: 120, top: 20, bottom: 20 } },
+    plugins:{ legend:{display:false}, datalabels:{display:true} },
     scales:{
       x:{ grid:{color:'#e8e8e422'}, ticks:{font:{size:12}} },
-      y:{ grid:{color:'#e8e8e422'},
-           ticks:{font:{size:12}, callback: v=>v.toFixed(2)},
-           title:{display:true, text:'C', font:{size:12}} }
+      y:{
+        grid:{color:'#e8e8e422'},
+        ticks:{font:{size:12}, callback: v=>v.toFixed(2)},
+        title:{display:true, text:'Overhead C', font:{size:12}},
+        min: 1.0, max: 2.8
+      }
     }
   }
 });
+
+// Chart 8: Spider / Radar chart
+// pointLabels use arrays (one string per line) — Chart.js renders array elements
+// on separate lines natively; '\n' in a plain string does NOT work.
+(function() {
+  const rawSpace = [cVals[0], cVals[1], cVals[2], cVals[3]];
+  const rawIns   = [insNs[0], insNs[1], insNs[2], insNs[3]];
+  const rawPos   = [posNs[0], posNs[1], posNs[2], posNs[3]];
+  const rawNeg   = [negNs[0], negNs[1], negNs[2], negNs[3]];
+  const rawDel   = [0, 1, 1, 1];
+
+  function normalize(arr, invert) {
+    const mn = Math.min(...arr), mx = Math.max(...arr);
+    if (mx === mn) return arr.map(() => 1);
+    return arr.map(v => invert
+      ? +(1-(v-mn)/(mx-mn)).toFixed(3)
+      : +((v-mn)/(mx-mn)).toFixed(3));
+  }
+
+  const normSpace = normalize(rawSpace, true);
+  const normIns   = normalize(rawIns,   true);
+  const normPos   = normalize(rawPos,   true);
+  const normNeg   = normalize(rawNeg,   true);
+  const normDel   = rawDel;
+
+  // Array per axis = multi-line point label (Chart.js native support)
+  const axes = [
+    ['Space', 'efficiency'],
+    ['Insert', 'speed'],
+    ['Positive', 'lookup'],
+    ['Negative', 'lookup'],
+    ['Deletion', 'support']
+  ];
+  const filters = ['Bloom', 'Bucketed', 'Windowed', 'Morton'];
+  const fc = ['#3266ad', '#73726c', '#1D9E75', '#BA7517'];
+  const fb = ['#3266ad30', '#73726c30', '#1D9E7530', '#BA751730'];
+
+  const datasets = filters.map((name, i) => ({
+    label: name,
+    data: [normSpace[i], normIns[i], normPos[i], normNeg[i], normDel[i]],
+    borderColor: fc[i], backgroundColor: fb[i], borderWidth: 2,
+    pointBackgroundColor: fc[i], pointRadius: 4,
+    datalabels: { display: false }
+  }));
+
+  new Chart(document.getElementById('c8'), {
+    type: 'radar',
+    data: { labels: axes, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        r: {
+          min: 0, max: 1,
+          ticks: {
+            stepSize: 0.25,
+            font: { size: 10 },
+            backdropColor: 'transparent',
+            callback: v => v === 0 ? '0' : v === 1 ? '1' : v.toFixed(2)
+          },
+          pointLabels: {
+            font: { size: 12, weight: '500' },
+            color: '#333',
+            padding: 8       // extra padding so axis labels never touch the polygon
+          },
+          grid: { color: '#e0e0da' },
+          angleLines: { color: '#d0d0cc' }
+        }
+      }
+    }
+  });
+})();
 </script>
 </body>
 </html>
