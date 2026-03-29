@@ -285,28 +285,21 @@ const gridOpts = {{
   }}
 }};
 
-// barChart: labels placed INSIDE the top of each bar (align:'start', anchor:'end')
-// so they never overflow above the chart boundary regardless of value spread.
 function barChart(id, labels, data, color, yLabel, minVal, fmtFn) {{
   const opts = JSON.parse(JSON.stringify(gridOpts));
   opts.scales.y.title = {{ display: true, text: yLabel, font: {{ size: 12 }} }};
   if (minVal !== undefined) opts.scales.y.min = minVal;
   const maxVal = Math.max(...data);
   const base   = minVal !== undefined ? minVal : 0;
-  // Add only 8% headroom — label sits inside bar so no overflow needed
-  opts.scales.y.max = base + (maxVal - base) * 1.08;
+  opts.scales.y.max = base + (maxVal - base) * 1.22;
   opts.plugins.datalabels = {{
-    display: true,
-    anchor: 'end',       // pin to top of bar
-    align: 'start',      // draw label downward from anchor = inside bar top
-    offset: 4,
-    font: {{ size: 11, weight: '500' }},
-    color: '#fff',       // white text on coloured bar is always readable
+    display: true, anchor: 'end', align: 'end', offset: 4,
+    font: {{ size: 11, weight: '500' }}, color: '#444441',
     formatter: fmtFn || (v => v.toFixed(2))
   }};
   new Chart(document.getElementById(id), {{
     type: 'bar',
-    data: {{ labels, datasets: [{{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.6 }}] }},
+    data: {{ labels, datasets: [{{ data, backgroundColor: color, borderRadius: 4, barPercentage: 0.55 }}] }},
     options: opts
   }});
 }}
@@ -314,28 +307,10 @@ function barChart(id, labels, data, color, yLabel, minVal, fmtFn) {{
 // Chart 1: bits per item
 barChart('c1', names, bpi, colors, 'bits / item', 0, v => v.toFixed(2));
 
-// Chart 2: overhead C — y starts at 1.0 so bars are short; use outside label for readability
-(function() {{
-  const opts = JSON.parse(JSON.stringify(gridOpts));
-  opts.scales.y.title = {{ display: true, text: 'C', font: {{ size: 12 }} }};
-  opts.scales.y.min = 1.0;
-  const maxC = Math.max(...cVals);
-  opts.scales.y.max = 1.0 + (maxC - 1.0) * 1.30; // extra room — bars are short above 1.0
-  opts.plugins.datalabels = {{
-    display: true, anchor: 'end', align: 'end', offset: 4,
-    font: {{ size: 11, weight: '500' }}, color: '#444441',
-    formatter: v => v.toFixed(3)
-  }};
-  new Chart(document.getElementById('c2'), {{
-    type: 'bar',
-    data: {{ labels: names, datasets: [{{ data: cVals, backgroundColor: colors,
-             borderRadius: 4, barPercentage: 0.6 }}] }},
-    options: opts
-  }});
-}})();
+// Chart 2: overhead C
+barChart('c2', names, cVals, colors, 'C', 1.0, v => v.toFixed(3));
 
-// Chart 3: FPR grouped — measured label OUTSIDE (above), target label INSIDE
-// so two labels for the same group never collide.
+// Chart 3: FPR measured vs target
 new Chart(document.getElementById('c3'), {{
   type: 'bar',
   data: {{
@@ -348,8 +323,8 @@ new Chart(document.getElementById('c3'), {{
                         formatter: v => v.toFixed(4)+'%' }} }},
       {{ label: 'Target', data: fprT, backgroundColor: '#E24B4a', borderRadius: 4,
          barPercentage: 0.4,
-         datalabels: {{ display:true, anchor:'center', align:'center', offset:0,
-                        font:{{size:10,weight:'500'}}, color:'#fff',
+         datalabels: {{ display:true, anchor:'end', align:'end', offset:3,
+                        font:{{size:10,weight:'500'}}, color:'#791F1F',
                         formatter: v => v.toFixed(4)+'%' }} }}
     ]
   }},
@@ -365,13 +340,12 @@ new Chart(document.getElementById('c3'), {{
   }}
 }});
 
-// Charts 4, 5, 6: throughput — inside-bar white labels, no overflow
+// Charts 4, 5, 6: throughput
 barChart('c4', names, insNs, colors, 'ns / op', 0, v => v.toFixed(1));
 barChart('c5', names, negNs, colors, 'ns / op', 0, v => v.toFixed(1));
 barChart('c6', names, posNs, colors, 'ns / op', 0, v => v.toFixed(1));
 
-// Chart 7: C(k) line chart — end-of-line labels staggered vertically
-// Bucketed and Windowed converge at large k; offset them so they don't touch.
+// Chart 7: C(k) line chart
 const ks = [4,5,6,7,8,9,10,12,14,16,18,20];
 const c7Data = {{
   bloom:    ks.map(() => 1.443),
@@ -379,40 +353,29 @@ const c7Data = {{
   windowed: ks.map(k => 1.06*(1+2/k)),
   morton:   ks.map(k => (k+6)/(k*0.95))
 }};
-// align: 'right' + offset staggers labels right of last point.
-// 'top'/'bottom' nudge vertically for lines that are close at k=20.
-function endLabel(color, text, vAlign) {{
-  return {{
-    display: ctx => ctx.dataIndex === ks.length - 1,
-    anchor: 'end', align: vAlign || 'right', offset: 8,
-    font: {{ size: 10, weight: '500' }},
-    color: color,
-    formatter: () => text
-  }};
-}}
 new Chart(document.getElementById('c7'), {{
   type: 'line',
   data: {{
     labels: ks.map(k => 'k='+k),
     datasets: [
-      {{ label:'Bloom', data:c7Data.bloom, borderColor:'#3266ad',
+      {{ label:'Bloom',    data:c7Data.bloom,    borderColor:'#3266ad',
          borderWidth:2, pointRadius:2, tension:0,
-         datalabels: endLabel('#3266ad', 'Bloom 1.443', 'top') }},
+         datalabels: {{ display:false }} }},
       {{ label:'Bucketed', data:c7Data.bucketed, borderColor:'#73726c',
          borderWidth:2, pointRadius:2, tension:0.3,
-         datalabels: endLabel('#5F5E5A', '1.05(1+3/k)', 'top') }},
+         datalabels: {{ display:false }} }},
       {{ label:'Windowed', data:c7Data.windowed, borderColor:'#1D9E75',
          borderWidth:2.5, pointRadius:2, tension:0.3,
-         datalabels: endLabel('#0F6E56', '1.06(1+2/k) ✓', 'bottom') }},
-      {{ label:'Morton', data:c7Data.morton, borderColor:'#BA7517',
+         datalabels: {{ display:false }} }},
+      {{ label:'Morton',   data:c7Data.morton,   borderColor:'#BA7517',
          borderWidth:2, pointRadius:2, tension:0.3, borderDash:[5,3],
-         datalabels: endLabel('#854F0B', '(k+6)/(k·0.95)', 'right') }}
+         datalabels: {{ display:false }} }}
     ]
   }},
   options: {{
     responsive:true, maintainAspectRatio:false,
-    layout: {{ padding: {{ right: 120, top: 20, bottom: 20 }} }},
-    plugins:{{ legend:{{display:false}}, datalabels:{{display:true}} }},
+    layout: {{ padding: {{ right: 16, top: 8, bottom: 8 }} }},
+    plugins:{{ legend:{{display:false}}, datalabels:{{display:false}} }},
     scales:{{
       x:{{ grid:{{color:'#e8e8e422'}}, ticks:{{font:{{size:12}}}} }},
       y:{{
@@ -426,8 +389,10 @@ new Chart(document.getElementById('c7'), {{
 }});
 
 // Chart 8: Spider / Radar chart
-// pointLabels use arrays (one string per line) — Chart.js renders array elements
-// on separate lines natively; '\n' in a plain string does NOT work.
+// FIX: Chart.js 4.x pointLabels does not split plain strings on '\n'.
+// Use the pointLabels.callback to return the label directly — Chart.js 4.x
+// renders array return values as multi-line natively when using the callback form.
+// Extra layout padding stops the axis labels being clipped at the canvas edge.
 (function() {{
   const rawSpace = [cVals[0], cVals[1], cVals[2], cVals[3]];
   const rawIns   = [insNs[0], insNs[1], insNs[2], insNs[3]];
@@ -449,14 +414,17 @@ new Chart(document.getElementById('c7'), {{
   const normNeg   = normalize(rawNeg,   true);
   const normDel   = rawDel;
 
-  // Array per axis = multi-line point label (Chart.js native support)
-  const axes = [
+  // Axis labels as arrays — each inner array is one label, rendered on two lines.
+  // The pointLabels.callback below returns the array directly; Chart.js 4.x
+  // renders each element on its own line inside the label bounding box.
+  const axisLabels = [
     ['Space', 'efficiency'],
     ['Insert', 'speed'],
     ['Positive', 'lookup'],
     ['Negative', 'lookup'],
     ['Deletion', 'support']
   ];
+
   const filters = ['Bloom', 'Bucketed', 'Windowed', 'Morton'];
   const fc = ['#3266ad', '#73726c', '#1D9E75', '#BA7517'];
   const fb = ['#3266ad30', '#73726c30', '#1D9E7530', '#BA751730'];
@@ -465,20 +433,26 @@ new Chart(document.getElementById('c7'), {{
     label: name,
     data: [normSpace[i], normIns[i], normPos[i], normNeg[i], normDel[i]],
     borderColor: fc[i], backgroundColor: fb[i], borderWidth: 2,
-    pointBackgroundColor: fc[i], pointRadius: 4,
+    pointBackgroundColor: fc[i],
+    pointRadius: 2,          // small dots — don't obscure tick numbers
+    pointHoverRadius: 6,     // enlarge on hover so they are still easy to target
     datalabels: {{ display: false }}
   }}));
 
   new Chart(document.getElementById('c8'), {{
     type: 'radar',
-    data: {{ labels: axes, datasets }},
+    data: {{ labels: axisLabels, datasets }},
     options: {{
       responsive: true, maintainAspectRatio: false,
+      // Padding keeps axis labels from being clipped at canvas edges
+      layout: {{ padding: {{ top: 20, bottom: 20, left: 20, right: 20 }} }},
       plugins: {{
         legend: {{ display: false }},
         datalabels: {{ display: false }},
         tooltip: {{
           callbacks: {{
+            // Flatten array label back to a readable string in the tooltip title
+            title: items => items[0].label.join(' '),
             label: ctx => `${{ctx.dataset.label}}: ${{ctx.raw.toFixed(2)}}`
           }}
         }}
@@ -486,16 +460,14 @@ new Chart(document.getElementById('c7'), {{
       scales: {{
         r: {{
           min: 0, max: 1,
-          ticks: {{
-            stepSize: 0.25,
-            font: {{ size: 10 }},
-            backdropColor: 'transparent',
-            callback: v => v === 0 ? '0' : v === 1 ? '1' : v.toFixed(2)
-          }},
+          ticks: {{ display: false }},
           pointLabels: {{
             font: {{ size: 12, weight: '500' }},
             color: '#333',
-            padding: 8       // extra padding so axis labels never touch the polygon
+            padding: 12,
+            // Callback receives the raw label value (array) and returns it as-is.
+            // Chart.js 4.x renders array elements on separate lines automatically.
+            callback: label => label
           }},
           grid: {{ color: '#e0e0da' }},
           angleLines: {{ color: '#d0d0cc' }}
